@@ -198,8 +198,7 @@ class OnePieceMangaScraper(object):
                 f.close()
 
 if __name__ == '__main__':
-    user_input = input('Which chapter should be scraped?\n',
-                       'Give a number of a chapter or just all: ')
+    user_input = input('Which chapter should be scraped?\n Give a number of a chapter or just all: ')
     scraper = OnePieceMangaScraper()
     if user_input == 'all':
         scraper.scrape_all_chapters()
