@@ -1,13 +1,12 @@
-import requests
 from bs4 import BeautifulSoup
-import os
-import shutil
-import time
-import sys
+import shutil, requests
+import time, sys, os
 import re
+import random
+from constructor import HTTPHeaderConstructor
 
 
-class OnePieceMangaScraper(object):
+class OnePieceMangaScraper(HTTPHeaderConstructor):
     """
     This class implements a webscraper to collect One-Piece Manga and saves it locally.
 
@@ -20,10 +19,13 @@ class OnePieceMangaScraper(object):
 
         arguments:
         -------------------
-        headers:
+        ?headers:
             Headers used for the requests. User Agend included only, so that there is not just
             a headless browser making a call to the webpages. If there is a problem with the given header.
-            This can be adapted.
+            This can be adapted. Set within class method
+
+        ?proxy:
+            Proxy is set within a class method. Fakes different proxies.
 
         base_url:
             URL to make calls to. This class only works with this URL!
@@ -38,8 +40,7 @@ class OnePieceMangaScraper(object):
             It's a dictionary of URL containing the URL's the chapters of the Manga.
 
         """
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+        super().__init__()
         self.base_url = 'https://onepiece-manga-online.net/'
 
         self.response_code = requests.get(self.base_url)
@@ -51,7 +52,7 @@ class OnePieceMangaScraper(object):
     def _create_chapter_dict(self):
         """(None) ---> (dict)
 
-        Scrapes all the chatpers from https://onepiece-manga-online.net/ and creates a dictinoary with
+        Scrapes all the chapters from https://onepiece-manga-online.net/ and creates a dictinoary with
         all chapters and the depending hyperlinks to their chapter.
 
         returns:
@@ -98,8 +99,11 @@ class OnePieceMangaScraper(object):
 
         """
         chapter_url = self.chapter_dict[chapter_no]
+        header = self.get_user_agent()
+        proxy = self.get_proxy()
         try:
-            response = requests.get(chapter_url, stream=True, headers=self.headers)
+            response = requests.get(chapter_url, stream=True, headers=header,
+                                    proxies=proxy)
             soup = BeautifulSoup(response.text, 'html.parser')
             soup_ = soup.find_all('meta', attrs=dict(property="og:image"))
 
@@ -131,7 +135,7 @@ class OnePieceMangaScraper(object):
             sys.stdout.flush()
             sys.stdout.write(f'\r ---- Currently Scraping Chapter {i} of {latest_chapter} ----')
             self.scrape_chapter(chapter_no=i)
-            time.sleep(1)
+            time.sleep(random.randint(0, 10))
             i += 1
 
     def get_latest_chapter(self):
@@ -162,7 +166,8 @@ class OnePieceMangaScraper(object):
             The number of the chapter which should be scraped.
         """
         for page, url in page_content.items():
-            response = requests.get(url=url, stream=True, headers=self.headers)
+            response = requests.get(url=url, stream=True, headers=self.get_user_agent(),
+                                    proxies=self.get_proxy())
             OnePieceMangaScraper._save_image(image_ressources=response, chapter_no=chapter_no,
                                              page_number=page)
 

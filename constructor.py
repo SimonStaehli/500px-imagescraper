@@ -1,6 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 import sys, json, os
+import pandas as pd
+import random
 
 
 class UserAgentConstructor(object):
@@ -70,7 +72,7 @@ class UserAgentConstructor(object):
         random_user_agent:
             a randomly picked user agent from a list of possible user agents.
         """
-        return random.choice(self.user_agents)
+        return {'User-Agent':random.choice(self.user_agents)}
 
 
 class ProxyConstructor(object):
@@ -79,6 +81,8 @@ class ProxyConstructor(object):
     def __init__(self, proxy_path='proxy.json'):
         """
         Proxies which can be used for the HTTP-Request.
+
+        Website Souce: https://geonode.com/free-proxy-list
 
         arguments:
         -----------------
