@@ -103,7 +103,7 @@ class OnePieceMangaScraper(HTTPHeaderConstructor):
         proxy = self.get_proxy()
         try:
             response = requests.get(chapter_url, stream=True, headers=header,
-                                    proxies=proxy)
+                                    proxies=proxy, timeout=30)
             soup = BeautifulSoup(response.text, 'html.parser')
             soup_ = soup.find_all('meta', attrs=dict(property="og:image"))
 
