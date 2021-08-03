@@ -112,7 +112,7 @@ class ProxyConstructor(object):
         self.proxies = None
         self.proxy_endpoint = proxy_endpoint
 
-    def load_proxy(self):
+    def load(self):
         """
         Main script to call class method by the endpoint provided as class object.
 
@@ -209,19 +209,16 @@ class ProxyConstructor(object):
             try:
                 requests.get('https://www.google.ch/', proxies=proxy, timeout=timeout_limit)
                 end = dt.datetime.now() - start
-                if end > timeout_limit:
-                    times.append(None)
-                else:
-                    times.append(end)
+                times.append(end)
             except:
                 times.append(None)
             finally:
                 i += 1
 
         # Filter proxies with None and set new proxies
-        checked_proxies = [i for i, _ in enumerate(times) if i != None]
+        checked_proxies = [i for i, _ in enumerate(times) if _ != None]
         checked_proxies = [self.proxies[i] for i in checked_proxies]
-        print(f'Filtered Slow proxies: Reachable {len(checked_proxies)} of {len(self.proxies)}')
+        print(f'Reachable: {len(checked_proxies)} of {len(self.proxies)}')
         if keep_good:
             self.proxies = checked_proxies
             proxies_dict = dict(proxies=self.proxies)
