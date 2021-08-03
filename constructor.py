@@ -209,7 +209,7 @@ class ProxyConstructor(object):
             try:
                 requests.get('https://www.google.ch/', proxies=proxy, timeout=timeout_limit)
                 end = dt.datetime.now() - start
-                if end > timeout_limit_limit:
+                if end > timeout_limit:
                     times.append(None)
                 else:
                     times.append(end)
