@@ -4,7 +4,7 @@ import json
 import os
 import pandas as pd
 import random
-import tqdm
+from tqdm import tqdm
 import datetime as dt
 
 
@@ -112,7 +112,7 @@ class ProxyConstructor(object):
         self.proxies = None
         self.proxy_endpoint = proxy_endpoint
 
-    def load(self):
+    def load_proxy(self):
         """
         Main script to call class method by the endpoint provided as class object.
 
@@ -204,7 +204,7 @@ class ProxyConstructor(object):
         times = []
         i = 1
         for proxy in tqdm(self.proxies):
-            proxy = {'http': proxy, 'https': proxy}
+            proxy = {'http': 'http://'+str(proxy), 'https': 'https://'+str(proxy)}
             start = dt.datetime.now()
             try:
                 requests.get('https://www.google.ch/', proxies=proxy, timeout=timeout_limit)
@@ -216,7 +216,7 @@ class ProxyConstructor(object):
                 i += 1
 
         # Filter proxies with None and set new proxies
-        checked_proxies = [i for i, _ in enumerate(times) if _ != None]
+        checked_proxies = [i for i, t in enumerate(times) if t != None]
         checked_proxies = [self.proxies[i] for i in checked_proxies]
         print(f'Reachable: {len(checked_proxies)} of {len(self.proxies)}')
         if keep_good:
@@ -253,13 +253,14 @@ class ProxyConstructor(object):
         """
         proxy = random.choice(self.proxies)
 
-        return {'http': proxy, 'https': proxy}
+        return {'http': 'http://'+str(proxy), 'https': 'https://'+str(proxy)}
 
 class HTTPHeaderConstructor(ProxyConstructor, UserAgentConstructor):
 
     def __init__(self):
         ProxyConstructor.__init__(self, proxy_path='proxy.json', proxy_endpoint='ProxyScrape')
         UserAgentConstructor.__init__(self, user_agent_path='user_agents.json')
+        self._check_json()
 
     def _check_json(self):
         """
@@ -269,13 +270,15 @@ class HTTPHeaderConstructor(ProxyConstructor, UserAgentConstructor):
         if self.proxy_path in files and self.user_agent_path in files:
             pass
         else:
-            raise Exception(f'One of the Files {self.proxy_path}, {self.user_agent_path} not exists')
+            raise Exception(f'One of the Files {self.proxy_path}, {self.user_agent_path} does not exists')
 
 
 if __name__ == '__main__':
     constructor = HTTPHeaderConstructor()
     # Load Proxies
     constructor.load_proxy()
+    constructor.google_check(timeout_limit=5, keep_good=True)
+
     # Load User Agents
     constructor.load_ua()
 
