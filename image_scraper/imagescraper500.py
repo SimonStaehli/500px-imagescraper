@@ -175,6 +175,7 @@ class ImageStream500(ImageSaver):
                 else:
                     href_urls.append(href)
             if len(href_urls) == 0:
+                time.sleep(random.randint(1, 10))
                 continue
 
             # go to href and extract image urls and image class + save it as dict
