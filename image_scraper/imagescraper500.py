@@ -340,7 +340,3 @@ class ImageCrawler500(ImageSaver):
             image_urls[img_class] = image_sources
 
         return image_urls
-
-
-crawler = ImageCrawler500(amount_per_class=5, popularity_ranking='popular')
-crawler.crawl()
