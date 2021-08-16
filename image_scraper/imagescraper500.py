@@ -171,11 +171,12 @@ class ImageStream500(ImageSaver):
                 href = self.driver.find_element_by_xpath(
                     f'//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[{i}]/a').get_attribute('href')
                 if href in href_history:
+                    # Check if href already exists in history
                     break
                 else:
                     href_urls.append(href)
             if len(href_urls) == 0:
-                time.sleep(random.randint(1, 10))
+                time.sleep(random.randint(10, 20))
                 continue
 
             # go to href and extract image urls and image class + save it as dict
@@ -211,7 +212,8 @@ class ImageStream500(ImageSaver):
             print(f'| Extracted {len(list(image_urls[iteration].keys()))} more images successfully in Iteration.')
 
             # Set history of scraped images to avoid duplicates
-            href_history = href_urls
+            for href in href_urls:
+                href_history.append(href)
 
             # If iteration is batchsize than save images and empty url dict
             if iteration == self.iteration_batch:
