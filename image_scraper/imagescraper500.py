@@ -7,7 +7,8 @@ import requests
 import os
 import time
 import random
-
+import datetime as dt
+from tqdm import tqdm
 
 class SiteContent500(object):
 
@@ -66,10 +67,11 @@ class ImageSaver(SiteContent500):
         for picture_class, all_urls in image_urls.items():
             # Extract id of the image from retrieve url
             if type(all_urls) == list:
-                for url in all_urls:
+                for url in tqdm(iterable=all_urls):
                     # Save images
                     with open(f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg', 'wb') as image_file:
                         image_file.write(requests.get(url).content)
+
             else:
                 with open(f'{self.image_folder_path}/{picture_class}/{all_urls.split("/")[4]}.jpg', 'wb') as image_file:
                     image_file.write(requests.get(all_urls).content)
@@ -95,51 +97,12 @@ class ImageSaver(SiteContent500):
 
         return counter
 
-class ImageExtractor500(ImageSaver):
-    """
-    This class extracts images from 500px.
-    """
+class ImageStream500(ImageSaver):
 
-    def __init__(self, webdriver_path='../src/chromedriver.exe', high_quality=False,
-                 amount_per_class=10):
+    def __init__(self, webdriver_path='../src/chromedriver.exe',
+                 popularity='upcoming', iter_sampling_rate=10,
+                 iteration_batch=10, stream_time=60):
         """
-        With this class images of the website 500px can be downloaded in mass.
-
-        Image streaming of fresh images to be added?
-
-        Parameters
-        ----------
-        webdriver_path : string
-            path where to webdriver for selenium is stored.
-
-        high_quality : Bool
-            should be true if image should be downloaded in higher quality. Another workflow is needed therefore.
-
-        amount_per_class: int
-            How many images per class should be scraped
-
-        batchsizes: int
-            Defines after which amount of images the images should be saved to a folder.
-
-        image_urls: dict
-            dictionary of urls and the image classes as keys
-
-        """
-        super(ImageExtractor500, self).__init__()
-        self.webdriver_path = webdriver_path
-
-        self.base_url = 'https://500px.com/'
-        self.high_quality = high_quality
-        self.amount_per_class = amount_per_class
-
-        # Set within class method
-        self.image_urls = None
-        self.driver = None
-
-    def stream(self, popularity='fresh', iter_sampling_rate=10, iteration_batch=10):
-        """
-        if this method is called the latest images of the popularity given as parameter will be streamed
-        until process is interrupted.
 
         Parameters
         ----------
@@ -153,19 +116,41 @@ class ImageExtractor500(ImageSaver):
 
         iteration_batch: int
             Defines after how much iterations the images shall be saved.
+
+        stream_time: int
+            Defines streamtime in hours how long the streaming should take place.
+
         """
+        super(ImageStream500, self).__init__()
+        self.webdriver_path = webdriver_path
+        self.popularity = popularity
+        self.iter_sampling_rate = iter_sampling_rate
+        self.iteration_batch = iteration_batch
+        self.stream_time = stream_time
+
+        # Set wihtin class method
+        self.driver = None
+
+    def stream(self):
+        """
+        if this method is called the latest images of the popularity given as parameter will be streamed
+        until process is interrupted or the stream_time exceeded.
+
+        """
+        # Call wdriver
         self.driver = webdriver.Chrome(self.webdriver_path)
 
         image_urls = {}
         href_history = []
         iteration = 0
+        end_time = dt.datetime.now() + dt.timedelta(minutes=self.stream_time)
 
-        while True:
+        while dt.datetime.now() < end_time:
             iteration += 1
             image_urls[iteration] = {}
 
             try:
-                self.driver.get('https://500px.com/' + popularity)
+                self.driver.get('https://500px.com/' + self.popularity)
                 # Wait on elements to appear
                 element_present = EC.presence_of_element_located(
                     (By.XPATH, '//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[1]/a/img'))
@@ -182,7 +167,7 @@ class ImageExtractor500(ImageSaver):
 
             # get all href
             href_urls = []
-            for i in range(1, iter_sampling_rate + 1):
+            for i in range(1, self.iter_sampling_rate + 1):
                 href = self.driver.find_element_by_xpath(
                     f'//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[{i}]/a').get_attribute('href')
                 if href in href_history:
@@ -228,7 +213,7 @@ class ImageExtractor500(ImageSaver):
             href_history = href_urls
 
             # If iteration is batchsize than save images and empty url dict
-            if iteration == iteration_batch:
+            if iteration == self.iteration_batch:
                 for _, urls in image_urls.items():
                     self.download_images(image_urls=urls)
                 image_urls = {}
@@ -237,15 +222,55 @@ class ImageExtractor500(ImageSaver):
 
             time.sleep(random.randint(1, 10))
 
-    def crawl_gallery(self, gallery_url):
-        """"""
-        self.driver = webdriver.Chrome(self.webdriver_path)
-        pass
 
-    def crawl_photographer(self, photographer_url):
-        """"""
-        self.driver = webdriver.Chrome(self.webdriver_path)
-        pass
+class ImageCrawler500(ImageSaver):
+    """
+    This class extracts images from 500px.
+    """
+
+    def __init__(self, webdriver_path='../src/chromedriver.exe', high_quality=False,
+                 amount_per_class=10, popularity_ranking='popular'):
+        """
+        With this class images of the website 500px can be downloaded in mass.
+
+        Image streaming of fresh images to be added?
+
+        Parameters
+        ----------
+        webdriver_path : string
+            path where to webdriver for selenium is stored.
+
+        high_quality : Bool
+            should be true if image should be downloaded in higher quality. Another workflow is needed therefore.
+
+        amount_per_class: int
+            How many images per class should be scraped
+
+        popularity_ranking: string
+            Can be one of: "popular", "upcoming", "fresh"
+
+        """
+        super(ImageCrawler500, self).__init__()
+        self.webdriver_path = webdriver_path
+        self.base_url = 'https://500px.com/'
+        self.high_quality = high_quality
+        self.amount_per_class = amount_per_class
+        self.popularity_ranking = popularity_ranking
+
+        # Set within class method
+        self.image_urls = None
+        self.driver = None
+
+
+    #def crawl_gallery(self, gallery_url):
+    #    """"""
+    #    self.driver = webdriver.Chrome(self.webdriver_path)
+    #    pass
+
+    #def crawl_photographer(self, photographer_url):
+    #    """"""
+    #    self.driver = webdriver.Chrome(self.webdriver_path)
+    #    pass
 
     def crawl(self):
         """
@@ -256,9 +281,9 @@ class ImageExtractor500(ImageSaver):
         if self.high_quality:
             self._crawl_mixed_hq()
         else:
-            self.image_urls = self._crawl_mixed_lq()
+            image_urls = self._crawl_mixed_lq()
 
-        self.download_images(image_urls=self.image_urls)
+        self.download_images(image_urls=image_urls)
 
         return self
 
@@ -284,9 +309,9 @@ class ImageExtractor500(ImageSaver):
         """
         # Scraping part
         image_urls = {}
-        for img_class in self.image_classes[:3]:
+        for img_class in self.image_classes:
             image_sources = []
-            url = self.base_url + '/' + self.popularity_rankings[0] + '/' + self.image_classes_dict[img_class]
+            url = self.base_url + '/' + self.popularity_ranking + '/' + self.image_classes_dict[img_class]
             self.driver.get(url)
             element_present = EC.presence_of_element_located((By.XPATH, '//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[1]/a/img'))
             WebDriverWait(self.driver, 5).until(element_present)
@@ -297,7 +322,6 @@ class ImageExtractor500(ImageSaver):
                 try:
                     try:
                         web_element = self.driver.find_element_by_xpath('//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[{}]/a/img'.format(element_number))
-                        print(web_element.get_attribute('src'))
                         image_sources.append(web_element.get_attribute('src'))
 
                     except:
@@ -318,7 +342,5 @@ class ImageExtractor500(ImageSaver):
         return image_urls
 
 
-
-
-extractor500 = ImageExtractor500(amount_per_class=10)
-extractor500.count_collected_images()
+crawler = ImageCrawler500(amount_per_class=5, popularity_ranking='popular')
+crawler.crawl()
