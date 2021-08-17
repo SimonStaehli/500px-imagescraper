@@ -31,6 +31,7 @@ class SiteContent500(object):
         image_classes_dict = dict(zip(image_classes, image_classes_string.split('-')))
 
         self.image_classes_dict = image_classes_dict
+        random.shuffle(image_classes)
         self.image_classes = image_classes
 
 
@@ -64,10 +65,10 @@ class ImageSaver(SiteContent500):
         image_urls : dict
             A dictionary which consists of classification of the image as key and the value is the image source.
         """
-        for picture_class, all_urls in image_urls.items():
+        for picture_class, all_urls in tqdm(iterable=image_urls.items()):
             # Extract id of the image from retrieve url
             if type(all_urls) == list:
-                for url in tqdm(iterable=all_urls):
+                for url in all_urls:
                     # Save images
                     with open(f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg', 'wb') as image_file:
                         image_file.write(requests.get(url).content)
@@ -80,20 +81,25 @@ class ImageSaver(SiteContent500):
         """
         Constructs a folder structure with the given image_folder_path attribute.
         """
+        try:
+            os.mkdir(self.image_folder_path)
+        except:
+            pass
         for img_class in self.image_classes:
             try:
                 os.mkdir(self.image_folder_path + '/' + img_class)
             except:
                 pass
 
-    def count_collected_images(self):
+    def count_collected_images(self, print_count=True):
         """Counts how many images were collected in the path until now."""
         counter = 0
         for directories in os.listdir(self.image_folder_path):
             for elements in os.listdir(self.image_folder_path + '/' + directories):
                 if '.jpg' in elements:
                     counter += 1
-        print(f'Counted {counter} Collected Images.')
+        if print_count:
+            print(f'Counted {counter} Collected Images.')
 
         return counter
 
@@ -176,6 +182,7 @@ class ImageStream500(ImageSaver):
                 else:
                     href_urls.append(href)
             if len(href_urls) == 0:
+                # if there is no new element in the list then skip loop
                 time.sleep(random.randint(10, 20))
                 continue
 
@@ -225,13 +232,20 @@ class ImageStream500(ImageSaver):
 
             time.sleep(random.randint(1, 10))
 
+        self.driver.close()
+        if image_urls != {}:
+            for _, urls in image_urls.items():
+                self.download_images(image_urls=urls)
+            print('| Saved Last Image Batch to folder.')
+        print(f'| Stream Time of {self.stream_time} min over.')
+
 
 class ImageCrawler500(ImageSaver):
     """
     This class extracts images from 500px.
     """
 
-    def __init__(self, webdriver_path='../src/chromedriver.exe', high_quality=False,
+    def __init__(self, webdriver_path='../src/chromedriver.exe',
                  amount_per_class=10, popularity_ranking='popular'):
         """
         With this class images of the website 500px can be downloaded in mass.
@@ -256,7 +270,6 @@ class ImageCrawler500(ImageSaver):
         super(ImageCrawler500, self).__init__()
         self.webdriver_path = webdriver_path
         self.base_url = 'https://500px.com/'
-        self.high_quality = high_quality
         self.amount_per_class = amount_per_class
         self.popularity_ranking = popularity_ranking
 
@@ -265,43 +278,22 @@ class ImageCrawler500(ImageSaver):
         self.driver = None
 
 
-    #def crawl_gallery(self, gallery_url):
-    #    """"""
-    #    self.driver = webdriver.Chrome(self.webdriver_path)
-    #    pass
-
-    #def crawl_photographer(self, photographer_url):
-    #    """"""
-    #    self.driver = webdriver.Chrome(self.webdriver_path)
-    #    pass
-
     def crawl(self):
         """
         If this method is called the process with the image crawling from the website is started.
         """
         self.driver = webdriver.Chrome(self.webdriver_path)
 
-        if self.high_quality:
-            self._crawl_mixed_hq()
-        else:
-            image_urls = self._crawl_mixed_lq()
+        image_urls = self._crawl_mixed()
 
+        self.driver.close()
         self.download_images(image_urls=image_urls)
 
         return self
 
-    def _crawl_mixed_hq(self):
-        """
-
-        Returns
-        -------
-
-        """
-        pass
 
 
-
-    def _crawl_mixed_lq(self):
+    def _crawl_mixed(self):
         """
         This method crawls a given amount of images by each image class.
 
@@ -321,7 +313,7 @@ class ImageCrawler500(ImageSaver):
 
             element_number = 1
             while element_number < self.amount_per_class + 1:
-                print(f"| Extracting: {element_number} / {img_class}")
+                print(f"| Extracting: {element_number}/{self.amount_per_class} of Class: {img_class}")
                 try:
                     try:
                         web_element = self.driver.find_element_by_xpath('//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[{}]/a/img'.format(element_number))
@@ -334,12 +326,11 @@ class ImageCrawler500(ImageSaver):
                         '//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[{}]/a'.format(element_number))
                     ActionChains(self.driver).move_to_element(element).perform()
                     element_number += 1
-                    time.sleep(random.randint(0, 2))
+                    #time.sleep(random.randint(0, 2))
 
                 except:
                     print('-- Could not Jump to next image.')
 
-            # Set the urls to the class
             image_urls[img_class] = image_sources
 
         return image_urls
