@@ -48,7 +48,7 @@ class ImageSaver(SiteContent500):
         image source.
 
         Parameters
-        ----------
+        --------------------------------------
         image_folder_path : string
             Relative Path where the images should be saved and the folder structure should be created.
 
@@ -62,28 +62,22 @@ class ImageSaver(SiteContent500):
         Takes a list of image source urls and downloads it to a given folder by image class and image_folder_path.
 
         Parameters
-        ----------
+        --------------------------------------
         image_urls : dict
             A dictionary which consists of classification of the image as key and the value is the image source.
         """
+        print('| Starting download of all images ...')
         for picture_class, all_urls in tqdm(iterable=image_urls.items()):
             # Extract id of the image from retrieve url
-            if type(all_urls) == list:
-                for url in all_urls:
-                    # Save images
-                    try:
-                        with open(f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg',
-                                  'wb') as image_file:
-                            image_file.write(requests.get(url).content)
-                    except:
-                        print(f'-- Could not Save image with class {picture_class} ({url})')
-            else:
+            for url in all_urls:
+                # Save images
                 try:
-                    with open(f'{self.image_folder_path}/{picture_class}/{all_urls.split("/")[4]}.jpg',
+                    with open(f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg',
                               'wb') as image_file:
-                        image_file.write(requests.get(all_urls).content)
+                        image_file.write(requests.get(url).content)
                 except:
-                    print(f'-- Could not Save image with class {picture_class} ({all_urls})')
+                    print(f'-- Could not Save image with class {picture_class} ({url})')
+
 
     def _construct_folder_structure(self):
         """
@@ -114,13 +108,28 @@ class ImageSaver(SiteContent500):
 
 class ImageStream500(ImageSaver):
 
-    def __init__(self, webdriver_path='../src/chromedriver.exe',
+    def __init__(self, webdriver,
                  popularity='upcoming', iter_sampling_rate=10,
-                 iteration_batch=10, stream_time=60):
+                 batchsize=10, stream_time=60, image_folder_path='./images'):
         """
-
+        To use this class a compatible webdriver of selenium needs to be installed and initiated. 
+        See here for more inforamtion: https://www.selenium.dev/downloads/
+        
+        When the class is initiated, it will create a folder strucutre automatically within the directory where 
+        the script is located.
+        
+        Example:
+        --------------------------------------
+        stream = ImageStream500(webdriver=webdriver.Chrome('../src/chromedriver.exe'),
+                                popularity='upcoming', iter_sampling_rate=10,
+                                iteration_batch=10, stream_time=60, image_folder_path='./images')
+        
         Parameters
-        ----------
+        --------------------------------------
+        webdriver: selenium webdriver
+            Created webdriver with selenium to make use of different webdrivers possible.         
+            Further information and Downloads here: https://www.selenium.dev/downloads/
+            
         popularity : string
             popularity which should be streamed. The higher the popularity the less image can be scraped
             but the more information to the classes will be probably available.
@@ -129,22 +138,22 @@ class ImageStream500(ImageSaver):
         iter_sampling_rate: int
             Defines how much images should be extracted in one iteration.
 
-        iteration_batch: int
-            Defines after how much iterations the images shall be saved.
+        batchsize: int
+            Defines after how many extracted images they shall be saved.
 
         stream_time: int
-            Defines streamtime in hours how long the streaming should take place.
+            Defines streamtime in minutes how long the streaming should take place.
+            
+        image_folder_path: string
+            Path where to images shall be  stored after the download.
 
         """
-        super(ImageStream500, self).__init__()
-        self.webdriver_path = webdriver_path
+        super(ImageStream500, self).__init__(image_folder_path=image_folder_path)
+        self.driver = webdriver
         self.popularity = popularity
         self.iter_sampling_rate = iter_sampling_rate
-        self.iteration_batch = iteration_batch
+        self.batchsize = batchsize
         self.stream_time = stream_time
-
-        # Set wihtin class method
-        self.driver = None
 
     def stream(self):
         """
@@ -152,9 +161,6 @@ class ImageStream500(ImageSaver):
         until process is interrupted or the stream_time exceeded.
 
         """
-        # Call wdriver
-        self.driver = webdriver.Chrome(self.webdriver_path)
-
         image_urls = {}
         href_history = []
         iteration = 0
@@ -162,7 +168,6 @@ class ImageStream500(ImageSaver):
 
         while dt.datetime.now() < end_time:
             iteration += 1
-            image_urls[iteration] = {}
 
             try:
                 self.driver.get('https://500px.com/' + self.popularity)
@@ -221,32 +226,39 @@ class ImageStream500(ImageSaver):
                         image_class = None
 
                 if image_class:
-                    image_urls[iteration][image_class] = image_source
+                    image_class = image_class.casefold()
+                    try:
+                        image_urls[image_class].append(image_source)
+                    except:
+                        # In case there is no
+                        image_urls[image_class] = []
+                        image_urls[image_class].append(image_source)
 
                 time.sleep(random.randint(0, 2))
 
-            print(f'| Extracted {len(list(image_urls[iteration].keys()))} more images successfully in Iteration.')
+            count_collected_images = sum((len(v) for v in image_urls.values()))
+            print(f'| Extracted {count_collected_images} images in total.')
 
             # Set history of scraped images to avoid duplicates
             for href in href_urls:
                 href_history.append(href)
 
-            # If iteration is batchsize than save images and empty url dict
-            if iteration == self.iteration_batch:
-                for _, urls in image_urls.items():
-                    self._download_images(image_urls=urls)
+            # If amount of collected images is bigger than batchsize than save images and empty url dict
+            if count_collected_images >= self.batchsize:
+                self._download_images(image_urls=image_urls)
                 image_urls = {}
                 print('| Saved Image Batch to folder.')
-                iteration = 0
 
             time.sleep(random.randint(1, 10))
 
+        # Comes after while loop
         self.driver.close()
         if image_urls != {}:
-            for _, urls in image_urls.items():
-                self._download_images(image_urls=urls)
+            self._download_images(image_urls=image_urls)
             print('| Saved Last Image Batch to folder.')
         print(f'| Stream Time of {self.stream_time} min over.')
+
+        return self
 
 
 class ImageCrawler500(ImageSaver):
@@ -254,40 +266,51 @@ class ImageCrawler500(ImageSaver):
     This class extracts images from 500px.
     """
 
-    def __init__(self, webdriver_path='../src/chromedriver.exe',
-                 amount_per_class=10, popularity_ranking='popular'):
+    def __init__(self, webdriver,
+                 amount_per_class=10, popularity_ranking='popular', image_folder_path='./images'):
         """
-        With this class images of the website 500px can be downloaded in mass.
+        With this class images of the website 500px can be downloaded in mass. You can download images with selenium and
+        a downloaded webdriver. This class will download image from a certain popularity_ranking which is defined as class
+        attribute and the given ammount of images by each class.
+        
+        When the class is initiated it will create a folder strucutre automatically within the directory where 
+        the script is located.
 
-        Image streaming of fresh images to be added?
-
+        Example:
+        --------------------------------------
+        crawler = ImageCrawler500(webdriver=webdriver.Chrome('../src/chromedriver.exe'),
+                                 amount_per_class=10, popularity_ranking='popular', 
+                                 image_folder_path='./images')
+        
         Parameters
-        ----------
-        webdriver_path : string
-            path where to webdriver for selenium is stored.
+        --------------------------------------
+        webdriver : selenium webdriver
+            Created webdriver with selenium to make use of different webdrivers possible.         
+            Further information and Downloads here: https://www.selenium.dev/downloads/
 
         amount_per_class: int
             How many images per class should be scraped
 
         popularity_ranking: string
             Can be one of: "popular", "upcoming", "fresh"
+            
+        image_folder_path: string
+            Path where webdriver is stored
 
         """
-        super(ImageCrawler500, self).__init__()
-        self.webdriver_path = webdriver_path
+        super(ImageCrawler500, self).__init__(image_folder_path=image_folder_path)
+        self.driver = webdriver
         self.base_url = 'https://500px.com/'
         self.amount_per_class = amount_per_class
         self.popularity_ranking = popularity_ranking
 
         # Set within class method
         self.image_urls = None
-        self.driver = None
 
     def crawl(self):
         """
         If this method is called the process with the image crawling from the website is started.
         """
-        self.driver = webdriver.Chrome(self.webdriver_path)
 
         image_urls = self._crawl_mixed()
 
@@ -301,13 +324,14 @@ class ImageCrawler500(ImageSaver):
         This method crawls a given amount of images by each image class.
 
         Returns:
-        ---------------
+        --------------------------------------
         image_urls: dict
             dictionary of image classes as keys and the depending image urls.
         """
         # Scraping part
         image_urls = {}
-        for img_class in self.image_classes:
+        for image_class_number, img_class in enumerate(self.image_classes):
+            print(f"| Extracting: {self.amount_per_class} Images of {img_class} ({image_class_number+1}/{len(self.image_classes)})")
             image_sources = []
             url = self.base_url + '/' + self.popularity_ranking + '/' + self.image_classes_dict[img_class]
             self.driver.get(url)
@@ -317,7 +341,6 @@ class ImageCrawler500(ImageSaver):
 
             element_number = 1
             while element_number < self.amount_per_class + 1:
-                print(f"| Extracting: {element_number}/{self.amount_per_class} of Class: {img_class}")
                 try:
                     try:
                         web_element = self.driver.find_element_by_xpath(
