@@ -7,8 +7,8 @@ if __name__ == '__main__':
     print(10*'*', 'Start Process', 10*'*')
     streaming = ImageStream500(webdriver=webdriver.Chrome('../src/chromedriver.exe'),
                                popularity='fresh',
-                               iter_sampling_rate=25,
-                               batchsize=50,
-                               stream_time=60)
+                               iter_sampling_rate=5,
+                               batchsize=10,
+                               stream_time=5)
     streaming.stream()
     print(10*'*', 'End Process', 10*'*')

@@ -154,6 +154,8 @@ class ImageStream500(ImageSaver):
         self.iter_sampling_rate = iter_sampling_rate
         self.batchsize = batchsize
         self.stream_time = stream_time
+        print(5*'*', f' ImageStream: popularity = {self.popularity} / iter_sampling_rate = {self.iter_sampling_rate} / '
+                     f'batchsize = {self.batchsize} / stream_time = {self.stream_time} ', 5*'*')
 
     def stream(self):
         """
@@ -306,6 +308,7 @@ class ImageCrawler500(ImageSaver):
 
         # Set within class method
         self.image_urls = None
+        print(5*'*', f' ImageCrawler: amount_per_class = {self.amount_per_class} / popularity_ranking = {self.popularity_ranking} ', 5*'*')
 
     def crawl(self):
         """
