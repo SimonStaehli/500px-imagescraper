@@ -39,14 +39,20 @@ def get_model_score():
     if request.method == 'GET':
         try:
             data = request.get_json()
+            X = pd.read_json(data['X'])
+            y = pd.read_json(data['y'])
+            print('---- Data Collected ----')
+
         except:
             return jsonify('No Valid Input for Model.')
         try:
-            model_score = model.model_score(X=data[0], y=data[1])
+            model_score = model.model_score(X=X, y=y)
+            print('---- Data fed to model and Score returned ----')
+
         except:
             return jsonify('Datatype not valid. Be Sure to input list in format: [X, y]')
 
-        return model_score
+        return jsonify(model_score)
 
 
 @app.route('/model_params', methods=['GET'])
