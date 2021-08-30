@@ -21,7 +21,7 @@ class CustomModel(object):
 
         """
         super(CustomModel, self).__init__()
-        self.model = None
+        self.cmodel = None
         self.filepath = filepath
         self._load_model()
 
@@ -30,8 +30,15 @@ class CustomModel(object):
         This function is called at initialization of the class and loads
         model as attribute to class
         """
-        with open(self.filepath, 'rb') as my_model:
-            self.model = pickle.load(my_model)
+        with open(self.filepath, 'rb') as file:
+            self.cmodel = pickle.load(file)
+
+    def _save_model(self):
+        """
+        Saves model to folder under the given filepath. Used during parameter update.
+        """
+        with open(self.filepath, 'wb') as file:
+            pickle.dump(self.cmodel, file)
 
     def model_predict(self, X):
         """
@@ -48,7 +55,7 @@ class CustomModel(object):
             predictions according to X
 
         """
-        return self.model.predict(X=X)
+        return self.cmodel.predict(X=X)
 
     def model_score(self, X, y):
         """
@@ -68,7 +75,7 @@ class CustomModel(object):
             score according to model description (mostly R2 or Accuracy)
 
         """
-        return self.model.score(X, y)
+        return self.cmodel.score(X=X, y=y)
 
     def return_parameters(self):
         """
@@ -82,7 +89,7 @@ class CustomModel(object):
 
         """
         try:
-            model_coef = self.model.coef_
+            model_coef = self.cmodel.coef_
         except:
             model_coef = 'Model does not have a .coef_ attribute.'
 
@@ -97,7 +104,7 @@ class CustomModel(object):
         None
         """
         os.remove(self.filepath)
-        self.model = None
+        self.cmodel = None
 
     def update_model_params(self, new_params):
         """
@@ -109,6 +116,10 @@ class CustomModel(object):
         None
         """
         new_params = np.array(new_params)
-        self.model.coef_ = new_params
+        self.cmodel.coef_ = new_params
+
+        # Save model in pkl
+        self._save_model()
+
 
 
