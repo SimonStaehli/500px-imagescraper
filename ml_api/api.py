@@ -40,13 +40,13 @@ def get_model_score():
     if request.method == 'POST':
         try:
             data = request.get_json()
-            X = pd.read_json(data['X']).to_numpy()
-            y = pd.read_json(data['y']).to_numpy()
+            X = pd.read_json(data['X'])
+            y = pd.read_json(data['y'])
             print('---- Data Collected ----')
         except ValueError:
             return jsonify('No Valid Input for Model.')
         try:
-            model_score = model.model_score(X=y, y=X)
+            model_score = model.model_score(X=X.to_numpy(), y=y.to_numpy())
             print('---- Data fed to model and Score returned ----')
 
         except TypeError:
