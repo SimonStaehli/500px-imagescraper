@@ -40,17 +40,18 @@ def get_model_score():
     if request.method == 'POST':
         try:
             data = request.get_json()
-            X = pd.read_json(data['X'])
-            y = pd.read_json(data['y'])
+            X = pd.read_json(data['X'], orient='records')
+            X = X.to_numpy()
+            y = pd.read_json(data['y'], orient='records')
+            y = y.to_numpy()
             print('---- Data Collected ----')
         except ValueError:
             return jsonify('No Valid Input for Model.')
         try:
-            model_score = model.model_score(X=X.to_numpy(), y=y.to_numpy())
+            model_score = model.model_score(X=X, y=y)
             print('---- Data fed to model and Score returned ----')
-
         except TypeError:
-            return jsonify('Datatype not valid. Be Sure to input list in format: [X, y]')
+            return jsonify('Datatype not valid. Be Sure to input dict with format: {X, y}')
 
         return jsonify(model_score)
 
