@@ -12,6 +12,9 @@ model = CustomModel(filepath='model.pkl')
 
 @app.route('/predict', methods=['POST'])
 def predict():
+    """
+    Prediction Endpoint. Returns Predictions for POST Request. Reachable by POST-Request.
+    """
     if request.method == 'POST':
         try:
             # Extract data from api
@@ -37,6 +40,9 @@ def predict():
 
 @app.route('/score', methods=['POST'])
 def get_model_score():
+    """
+    Scoring Endpoint. Returns Score of the model for given X and y. Reachable by POST-Request.
+    """
     if request.method == 'POST':
         try:
             data = request.get_json()
@@ -57,6 +63,9 @@ def get_model_score():
 
 @app.route('/update_model', methods=['PUT'])
 def update_model():
+    """
+    Update Model Endpoint. Updates Model parameters. Reachable by PUT-Request.
+    """
     if request.method == 'PUT':
         try:
             data = request.get_json()
@@ -74,6 +83,9 @@ def update_model():
 
 @app.route('/delete_model', methods=['DELETE'])
 def delete_model():
+    """
+    Delete Enpoint. Deletes the model. Reachable by DELETE-Request.
+    """
     if request.method == 'DELETE':
         try:
             model.delete_model()
@@ -84,6 +96,9 @@ def delete_model():
 
 @app.route('/model_params', methods=['GET'])
 def model_parameters():
+    """
+    Update model parameters endpoint. Updates model parameters. Reachable by GET-Request.
+    """
     if request.method == 'GET':
         try:
             model_params = model.return_parameters()
