@@ -10,6 +10,14 @@ app = Flask(__name__)
 transformer = CustomTransformer()
 model = CustomModel(filepath='model.pkl')
 
+@app.route('/check', methods=['GET'])
+def check():
+    """
+    Prediction Endpoint. Returns Predictions for POST Request. Reachable by POST-Request.
+    """
+    if request.method == 'GET':
+        return jsonify(200)
+
 @app.route('/predict', methods=['POST'])
 def predict():
     """
