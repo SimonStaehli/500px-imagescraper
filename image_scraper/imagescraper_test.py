@@ -1,11 +1,13 @@
 from imagescraper500 import ImageStream500, ImageCrawler500
+from selenium import webdriver
 
 if __name__ == '__main__':
     # The time frames of each script can cause duplicates which were not regarded in print statement
     # at the end of each class method.
-    streamer = ImageStream500(popularity='upcoming',
+    streamer = ImageStream500(webdriver=webdriver.Chrome('./src/chromedriver.exe'),
+                              popularity='upcoming',
                               iter_sampling_rate=15,
-                              iteration_batch=3,
+                              batchsize=3,
                               stream_time=.5
                               )
     image_before = streamer.count_collected_images()
