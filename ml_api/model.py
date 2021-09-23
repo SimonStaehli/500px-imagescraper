@@ -60,7 +60,7 @@ class CustomModel(object):
     def model_score(self, X, y):
         """
         Returns the score of the model for given data.
-        This method is strongly related to the class of the model and which attributes it provides.
+        This method is strongly related to the class of the model and which methods it provides.
 
         Parameters
         ----------
@@ -77,7 +77,7 @@ class CustomModel(object):
         """
         return self.cmodel.score(X=X, y=y)
 
-    def return_parameters(self):
+    def return_coef(self):
         """
         THis method is strongly related to the class attributes of the model.
         i.E. LinearRegression class does not have same attributes as KNN class.
@@ -94,6 +94,23 @@ class CustomModel(object):
             model_coef = 'Model does not have a .coef_ attribute.'
 
         return model_coef
+
+    def return_parameters(self):
+        """
+
+        Returns
+        -------
+        model_parameters:
+            model_parameters of the model
+        """
+        param_dict = {}
+        for key, item in self.cmodel.__dict__.items():
+            if type(item) == np.ndarray:
+                param_dict[key] = item.tolist()
+            else:
+                param_dict[key] = item
+
+        return param_dict
 
     def delete_model(self):
         """
@@ -118,8 +135,47 @@ class CustomModel(object):
         new_params = np.array(new_params)
         self.cmodel.coef_ = new_params
 
-        # Save model in pkl
+        # Save model as pkl
         self._save_model()
+
+    def create_new_model(self, model_params):
+        """
+        Creates a new model acc. to given model params. This model is only possible to use with equal models in
+        the src-folder. The parameter names should match with the parameters of the used model.
+        The current model gets overwritten by the new one.
+
+        Parameters
+        ----------
+        model_params:
+            Dictionary with model parameters to train a new model.
+
+        Returns
+        ---------
+        new_id:
+            the new id of the created model within src dir
+        """
+        # Create a new model with param
+        try:
+            for param_name, param_val in model_params.items():
+                self.cmodel.__dict__[param_name] = param_val
+        except sklearn.exceptions.FitFailedWarning:
+            pass
+
+        # Generate new Id for model
+        model_names = os.listdir('src')
+        new_id = 1
+        while f'model_{new_id}.pkl' in model_names:
+            new_id += 1
+
+        fp = self.filepath.split('/')[:-1]
+        fp = '/'.join(fp)
+        self.filepath = fp + '/model_' + str(new_id) + '.pkl'
+        print(self.filepath)
+        self._save_model()
+
+        return new_id
+
+
 
 
 

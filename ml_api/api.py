@@ -2,13 +2,10 @@ from transform import CustomTransformer
 from model import CustomModel
 from flask import Flask
 from flask import request, jsonify
-import numpy as np
 import pandas as pd
-import os
 
 app = Flask(__name__)
 transformer = CustomTransformer()
-model = CustomModel(filepath='model.pkl')
 
 @app.route('/check', methods=['GET'])
 def check():
@@ -18,11 +15,42 @@ def check():
     if request.method == 'GET':
         return jsonify(200)
 
-@app.route('/predict', methods=['POST'])
-def predict():
+# Finish and write testscript
+@app.route('/create_model', methods=['PUT'])
+def create_model():
+    """
+    Creates a new model based on existing model with new parameters and returns ID of the new created model.
+    """
+    model = CustomModel(filepath='./src/model_1.pkl')
+
+    if request.method == 'PUT':
+        try:
+            # Extract data from api
+            new_params = request.get_json()
+            print('---- Received Data Object as JSON ----')
+            model_id = model.create_new_model(model_params=new_params)
+        except ValueError:
+            return jsonify("Please send valid parameters to create a new model.")
+
+        return jsonify(dict(model_id=model_id))
+
+@app.route('/predict/<id>', methods=['POST'])
+def predict(id):
     """
     Prediction Endpoint. Returns Predictions for POST Request. Reachable by POST-Request.
+
+    Parameters
+    ----------
+    id:
+        Id of the model on server.
+
+    Returns
+    -------
+    predictions:
+        Predictions by the chosen model.
     """
+    model = CustomModel(filepath=f'./src/model_{id}.pkl')
+
     if request.method == 'POST':
         try:
             # Extract data from api
@@ -46,11 +74,13 @@ def predict():
 
         return jsonify(predictions.tolist())
 
-@app.route('/score', methods=['POST'])
-def get_model_score():
+@app.route('/score/<id>', methods=['POST'])
+def get_model_score(id):
     """
     Scoring Endpoint. Returns Score of the model for given X and y. Reachable by POST-Request.
     """
+    model = CustomModel(filepath=f'./src/model_{id}.pkl')
+
     if request.method == 'POST':
         try:
             data = request.get_json()
@@ -69,11 +99,13 @@ def get_model_score():
 
         return jsonify(model_score)
 
-@app.route('/update_model', methods=['PUT'])
-def update_model():
+@app.route('/update_model/<id>', methods=['PUT'])
+def update_model(id):
     """
     Update Model Endpoint. Updates Model parameters. Reachable by PUT-Request.
     """
+    model = CustomModel(filepath=f'./src/model_{id}.pkl')
+
     if request.method == 'PUT':
         try:
             data = request.get_json()
@@ -89,11 +121,13 @@ def update_model():
 
         return jsonify('Parameters updated successfully.')
 
-@app.route('/delete_model', methods=['DELETE'])
-def delete_model():
+@app.route('/delete_model/<id>', methods=['DELETE'])
+def delete_model(id):
     """
     Delete Enpoint. Deletes the model. Reachable by DELETE-Request.
     """
+    model = CustomModel(filepath=f'./src/model_{id}.pkl')
+
     if request.method == 'DELETE':
         try:
             model.delete_model()
@@ -102,18 +136,36 @@ def delete_model():
 
         return jsonify('Model Deleted Successfully.')
 
-@app.route('/model_params', methods=['GET'])
-def model_parameters():
+@app.route('/model_coef/<id>', methods=['GET'])
+def model_coef(id):
     """
     Update model parameters endpoint. Updates model parameters. Reachable by GET-Request.
     """
+    model = CustomModel(filepath=f'./src/model_{id}.pkl')
+
+    if request.method == 'GET':
+        try:
+            model_coef = model.return_coef()
+        except TypeError:
+            return jsonify('Datatype not valid. Be Sure to input list in format: [X, y]')
+
+        return jsonify(model_coef.tolist())
+
+@app.route('/model_params/<id>', methods=['GET'])
+def model_params(id):
+    """
+    Update model parameters endpoint. Updates model parameters. Reachable by GET-Request.
+    """
+    model = CustomModel(filepath=f'./src/model_{id}.pkl')
+
     if request.method == 'GET':
         try:
             model_params = model.return_parameters()
         except TypeError:
             return jsonify('Datatype not valid. Be Sure to input list in format: [X, y]')
 
-        return jsonify(model_params.tolist())
+        return jsonify(model_params)
+
 
 
 if __name__ == '__main__':
