@@ -3,12 +3,14 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+import selenium
 import requests
 import os
 import time
 import random
 import datetime as dt
 from tqdm import tqdm
+import json
 
 
 class SiteContent500(object):
@@ -57,7 +59,25 @@ class ImageSaver(SiteContent500):
         self.image_folder_path = image_folder_path
         self._construct_folder_structure()
 
-    def _download_images(self, image_urls):
+    def load_images_from_json(self, fp: str):
+        """
+        Loads image from json path. Could be saved in a previous process with ImageCrawler500.
+
+        Parameters
+        ----------
+        fp: str
+            filepaht to json file
+
+        Returns
+        -------
+        None
+        """
+        with open(fp, 'rb') as json_file:
+            image_sources = json.load(json_file)
+
+        self._download_images(image_urls=image_sources)
+
+    def _download_images(self, image_urls: dict):
         """
         Takes a list of image source urls and downloads it to a given folder by image class and image_folder_path.
 
@@ -75,6 +95,7 @@ class ImageSaver(SiteContent500):
                     with open(f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg',
                               'wb') as image_file:
                         image_file.write(requests.get(url).content)
+                    time.sleep(random.choice([i for i in range(3)]))
                 except:
                     print(f'-- Could not Save image with class {picture_class} ({url})')
 
@@ -108,7 +129,7 @@ class ImageSaver(SiteContent500):
 
 class ImageStream500(ImageSaver):
 
-    def __init__(self, webdriver,
+    def __init__(self, webdriver: selenium.webdriver,
                  popularity='upcoming', iter_sampling_rate=10,
                  batchsize=10, stream_time=60, image_folder_path='./images'):
         """
@@ -268,7 +289,7 @@ class ImageCrawler500(ImageSaver):
     This class extracts images from 500px.
     """
 
-    def __init__(self, webdriver,
+    def __init__(self, webdriver: selenium.webdriver,
                  amount_per_class=10, popularity_ranking='popular', image_folder_path='./images'):
         """
         With this class images of the website 500px can be downloaded in mass. You can download images with selenium and
@@ -318,9 +339,21 @@ class ImageCrawler500(ImageSaver):
         image_urls = self._crawl_mixed()
 
         self.driver.close()
+        self._save_image_urls()
         self._download_images(image_urls=image_urls)
 
         return self
+
+    def _save_image_urls(self):
+        """
+        Saves image Urls to JSON.
+
+        Returns
+        -------
+        None
+        """
+        with open('image_sources.json', 'wb') as json_file:
+            json.dump(obj=self.image_urls, fp=json_file)
 
     def _crawl_mixed(self):
         """
