@@ -72,7 +72,7 @@ class ImageSaver(SiteContent500):
         -------
         None
         """
-        with open(fp, 'rb') as json_file:
+        with open(fp, 'r') as json_file:
             image_sources = json.load(json_file)
 
         self._download_images(image_urls=image_sources)
@@ -339,12 +339,13 @@ class ImageCrawler500(ImageSaver):
         image_urls = self._crawl_mixed()
 
         self.driver.close()
-        self._save_image_urls()
+        print(image_urls)
+        self._save_image_urls(image_urls=image_urls)
         self._download_images(image_urls=image_urls)
 
         return self
 
-    def _save_image_urls(self):
+    def _save_image_urls(self, image_urls: dict):
         """
         Saves image Urls to JSON.
 
@@ -352,8 +353,8 @@ class ImageCrawler500(ImageSaver):
         -------
         None
         """
-        with open('image_sources.json', 'wb') as json_file:
-            json.dump(obj=self.image_urls, fp=json_file)
+        with open('image_sources.json', 'w') as json_file:
+            json.dump(obj=image_urls, fp=json_file)
 
     def _crawl_mixed(self):
         """
