@@ -339,7 +339,6 @@ class ImageCrawler500(ImageSaver):
         image_urls = self._crawl_mixed()
 
         self.driver.close()
-        print(image_urls)
         self._save_image_urls(image_urls=image_urls)
         self._download_images(image_urls=image_urls)
 
