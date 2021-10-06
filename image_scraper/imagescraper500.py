@@ -3,6 +3,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
+from selenium.common import exceptions
 import selenium
 import requests
 import os
@@ -74,44 +75,51 @@ class ImageSaver(SiteContent500):
         """
         with open(fp, 'r') as json_file:
             image_sources = json.load(json_file)
-
         self._download_images(image_urls=image_sources)
+        os.remove(fp)
+
 
     def _download_images(self, image_urls: dict):
         """
         Takes a list of image source urls and downloads it to a given folder by image class and image_folder_path.
 
         Parameters
-        --------------------------------------
+        ------------
         image_urls : dict
             A dictionary which consists of classification of the image as key and the value is the image source.
         """
         print('| Starting download of all images ...')
-        for picture_class, all_urls in tqdm(iterable=image_urls.items()):
+        for picture_class, all_urls in image_urls.items():
             # Extract id of the image from retrieve url
-            for url in all_urls:
-                # Save images
+            loaded_images = os.listdir(self.image_folder_path + '/' + picture_class)
+            for url in tqdm(iterable=all_urls, desc=f'Image Download of Class {picture_class}'):
                 try:
-                    with open(f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg',
-                              'wb') as image_file:
-                        image_file.write(requests.get(url).content)
-                    time.sleep(random.choice([i for i in range(3)]))
-                except:
+                    # Check if image already in in folder
+                    img_name = f'{url.split("/")[4]}.jpg'
+                    if img_name not in loaded_images:
+                        # Save Image
+                        image_save_path = f'{self.image_folder_path}/{picture_class}/{url.split("/")[4]}.jpg'
+                        with open(image_save_path, 'wb') as image_file:
+                            image_file.write(requests.get(url).content)
+                        time.sleep(random.choice([i for i in range(2)]))
+                except LookupError:
                     print(f'-- Could not Save image with class {picture_class} ({url})')
-
+                except KeyboardInterrupt:
+                    raise KeyboardInterrupt('Interrupted')
+                    
 
     def _construct_folder_structure(self):
-        """
-        Constructs a folder structure with the given image_folder_path attribute.
-        """
+        """Constructs a folder structure with the given image_folder_path attribute."""
         try:
             os.mkdir(self.image_folder_path)
-        except:
+        except Exception as e:
+            print(e)
             pass
         for img_class in self.image_classes:
             try:
                 os.mkdir(self.image_folder_path + '/' + img_class)
-            except:
+            except Exception as e:
+                print(e)
                 pass
 
     def count_collected_images(self, print_count=True):
@@ -198,14 +206,15 @@ class ImageStream500(ImageSaver):
                 element_present = EC.presence_of_element_located(
                     (By.XPATH, '//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[1]/a/img'))
                 WebDriverWait(self.driver, 5).until(element_present)
-            except:
-                print('-- Skip Iteration due to failure to get webpage in certain amount of time.')
+            except exceptions.TimeoutException as e:
+                print(e, '-- Skip Iteration due to failure to get webpage in certain amount of time.')
                 continue
 
             # Community window
             try:
                 self.driver.find_element_by_xpath('//*[@id="modal_content"]/div/div/div/div/div[1]/div[1]').click()
-            except:
+            except exceptions.NoSuchElementException as e:
+                print(e, '-- Element not available.')
                 pass
 
             # get all href
@@ -230,15 +239,18 @@ class ImageStream500(ImageSaver):
                     element_present = EC.presence_of_element_located(
                         (By.XPATH, '//*[@id="copyrightTooltipContainer"]/div/img'))
                     WebDriverWait(self.driver, 5).until(element_present)
-                except:
-                    print('-- Could not reach element in time. Skip element.')
+                except exceptions.NoSuchElementException as e:
+                    print(e, '-- Could not reach element in time. Skip element.')
 
                 try:
                     image_source = self.driver.find_element_by_xpath(
                         '//*[@id="copyrightTooltipContainer"]/div/img').get_attribute('src')
-                except:
+                except exceptions.NoSuchElementException as e:
+                    print(e, '-- No such Element found for URL and Attribute SRC')
                     pass
                 # sometimes images have diff div no. loop over a possible numbers
+                # Here it makes no sense to print exceptions as the try except is
+                # part of the Program.
                 for i in range(4, 9):
                     try:
                         image_class = self.driver.find_element_by_xpath(
@@ -246,6 +258,7 @@ class ImageStream500(ImageSaver):
                         if image_class.casefold() in self.image_classes:
                             break
                     except:
+                        print('-- Image Class not found. Setting it to None')
                         image_class = None
 
                 if image_class:
@@ -253,7 +266,8 @@ class ImageStream500(ImageSaver):
                     try:
                         image_urls[image_class].append(image_source)
                     except:
-                        # In case there is no
+                        # In case there is no such Element in the Dict create new and add
+                        # new element to the dict
                         image_urls[image_class] = []
                         image_urls[image_class].append(image_source)
 
@@ -384,8 +398,8 @@ class ImageCrawler500(ImageSaver):
                                 element_number))
                         image_sources.append(web_element.get_attribute('src'))
 
-                    except:
-                        print('-- Could not extract image url.')
+                    except exceptions.NoSuchAttributeException as e:
+                        print(e, '-- Could not extract image url.')
 
                     element = self.driver.find_element_by_xpath(
                         '//*[@id="content"]/div/div[1]/div[3]/div/div[1]/div/div/div[{}]/a'.format(element_number))
@@ -393,8 +407,8 @@ class ImageCrawler500(ImageSaver):
                     element_number += 1
                     # time.sleep(random.randint(0, 2))
 
-                except:
-                    print('-- Could not Jump to next image.')
+                except exceptions.WebDriverException as e:
+                    print(e, '-- Could not Jump to next image.')
 
             image_urls[img_class] = image_sources
 
