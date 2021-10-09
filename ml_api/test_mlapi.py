@@ -31,11 +31,12 @@ del model
 
 base_url = 'http://127.0.0.1:5000/'
 
-############## Test Part ###############
+# Test Part
 data_X = pd.DataFrame(X)
 data_X = data_X.to_json(orient='records')
 data_y = pd.DataFrame(y)
 data_y = data_y.to_json(orient='records')  # "records" bc pandas to_json() will mix up the index
+
 
 def test_endpoint_con():
     """
@@ -93,6 +94,7 @@ def test_parameters_endpoint(model_parameters=model_params):
         else:
             assert params[key] == model_parameters[key]
 
+
 def test_update_endpoint(coef_refer=coef_ref):
     """
     Function checks update_model endpoint of the API
@@ -107,6 +109,7 @@ def test_update_endpoint(coef_refer=coef_ref):
 
     np.testing.assert_array_almost_equal(x=coef_refer, y=new_coef,
                                          decimal=test_digits, verbose=True)
+
 
 def test_create_model_endpoint():
     """
@@ -127,10 +130,19 @@ def test_delete_endpoint():
     """
     Function checks delete_model endpoint of the API
     """
-    response = requests.delete(url=base_url + '/delete_model/1')
+    response = requests.delete(url=base_url + '/delete_model/2')
 
     assert response.status_code == 200
     assert 'model.pkl' not in os.listdir()
+
+
+def predict_with_wrong_http_method():
+    """
+    Function checks how the prediction API reacts, if it receives wrong HTTP Request mehtod
+    """
+    response = requests.get(url=base_url + '/predict/1', json=data_X)
+
+    assert response.status_code == 200
 
 
 if __name__ == '__main__':
