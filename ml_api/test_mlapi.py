@@ -58,6 +58,26 @@ def test_predict_endpoint():
                                    decimal=test_digits, verbose=True)
 
 
+def test_wrong_http_methods():
+    """
+    Function checks how the API reacts, if it receives wrong HTTP Request mehtod
+    """
+    response = requests.get(url=base_url + '/predict/1', json=data_X)
+    assert response.status_code == 405
+    response = requests.put(url=base_url + '/check')
+    assert response.status_code == 405
+    response = requests.get(url=base_url + '/score/1', json={})
+    assert response.status_code == 405
+    response = requests.put(url=base_url + '/model_coef/1')
+    assert response.status_code == 405
+    response = requests.post(url=base_url + '/model_params/1')
+    assert response.status_code == 405
+    response = requests.get(url=base_url + '/update_model/1', json={'params': []})
+    assert response.status_code == 405
+    response = requests.post(url=base_url + '/delete_model/2')
+    assert response.status_code == 405
+
+
 def test_score_endpoint():
     """
     Function checks score endpoint of the API
@@ -67,6 +87,16 @@ def test_score_endpoint():
     response = requests.post(url=base_url + '/score/1', json=data_)
     assert response.status_code == 200
     assert round(response.json(), 6) == round(score_ref, 6)
+
+def test_score_endpoint_no_valid_input():
+    """
+    Function checks score endpoint of the API with no valid input as X and y
+    """
+    data_ = dict(X='foo', y='foo')
+
+    response = requests.post(url=base_url + '/score/1', json=data_)
+    assert response.status_code == 200
+    assert response.json() == 'No Valid Input for Model.'
 
 
 def test_coef_endpoint(coef_refer=coef_ref):
@@ -93,6 +123,15 @@ def test_parameters_endpoint(model_parameters=model_params):
                                            decimal=test_digits, verbose=True)
         else:
             assert params[key] == model_parameters[key]
+
+
+def test_parameters_endpoint_wrong_model():
+    """
+    Function checks model_params endpoint of the API with a wrong model number.
+    """
+    response = requests.get(url=base_url + '/model_params/10000')
+
+    assert response.status_code == 500
 
 
 def test_update_endpoint(coef_refer=coef_ref):
@@ -135,15 +174,13 @@ def test_delete_endpoint():
     assert response.status_code == 200
     assert 'model.pkl' not in os.listdir()
 
-
-def predict_with_wrong_http_method():
+def test_delete_non_existing_model():
     """
-    Function checks how the prediction API reacts, if it receives wrong HTTP Request mehtod
+    Try to delete non existing model.
     """
-    response = requests.get(url=base_url + '/predict/1', json=data_X)
+    response = requests.delete(url=base_url + '/delete_model/20000')
 
-    assert response.status_code == 200
-
+    assert response.status_code == 500
 
 if __name__ == '__main__':
     pytest.main()
